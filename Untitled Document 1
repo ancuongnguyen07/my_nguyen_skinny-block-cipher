@@ -1,0 +1,52 @@
+
+        
+        
+        
+
+
+
+
+
+
+
+
+
+
+        
+        
+        mixCols(IS);
+
+
+
+
+
+
+
+
+const unsigned int M[] = {1,0,1,1,1,0,0,0,0,1,1,0,1,0,1,0};
+void mixCols(unsigned char* initState)
+{
+    // Copy the original matrix so I don't mess with it
+    unsigned char copy[16];
+    for (unsigned int i = 0; i < 16; i++)
+    {
+        copy[i] = initState[i];
+    }
+
+    // M*IS
+    for (unsigned int rowM = 0; rowM < 4; rowM++){
+        for (unsigned int colCopy = 0; colCopy < 4; colCopy++)
+        {
+            unsigned char cryptCell = 0xFF;
+
+            for (unsigned int n = 0; n < 4; n++)
+            {
+                unsigned int posM = 4*rowM + n;
+                unsigned int posCopy = 4*n + colCopy;
+
+                cryptCell ^= M[posM] * copy[posCopy];
+            }
+            initState[4*rowM + colCopy] = cryptCell;
+        }
+    }
+}
