@@ -15,7 +15,7 @@ void skinny(unsigned char *c, const unsigned char *p, const unsigned char *k) {
 
     for (unsigned int i = 0; i <  16; i++)
     {
-        IS[i] = p[i];
+        IS[i] = *(p+i);
     }
     
 
@@ -25,13 +25,12 @@ void skinny(unsigned char *c, const unsigned char *p, const unsigned char *k) {
     }
 
    
-
+    // printf("assigned");
 
     // one of 56 rounds of encryption
-    
     for (unsigned int r = 0; r < 56; r++)
     {   
-        printf("assigned");
+        // printf("assigned");
         
         subCells(IS);
 
@@ -40,16 +39,16 @@ void skinny(unsigned char *c, const unsigned char *p, const unsigned char *k) {
         
         
         addRTkey(IS,TK);
-        printf("%02x", *(IS+2));
+        // printf("%02x", *(IS+2));
         
-        //shiftRows(IS);
+        shiftRows(IS);
         
     }
     
 }
 
 /* SKINNY Sbox */
-const unsigned char S8 [] = {
+const unsigned char S8[] = {
 0x65 ,0x4c ,0x6a ,0x42 ,0x4b ,0x63 ,0x43 ,0x6b ,0x55 ,0x75 ,0x5a ,0x7a ,0x53 ,0x73 ,0x5b ,0x7b ,
 0x35 ,0x8c ,0x3a ,0x81 ,0x89 ,0x33 ,0x80 ,0x3b ,0x95 ,0x25 ,0x98 ,0x2a ,0x90 ,0x23 ,0x99 ,0x2b ,
 0xe5 ,0xcc ,0xe8 ,0xc1 ,0xc9 ,0xe0 ,0xc0 ,0xe9 ,0xd5 ,0xf5 ,0xd8 ,0xf8 ,0xd0 ,0xf0 ,0xd9 ,0xf9 ,
@@ -119,28 +118,52 @@ const unsigned int TK_PERMU[] = {9,15,8,13,10,14,12,11,0,1,2,3,4,5,6,7};
 void LFSR_TK(unsigned char* tk, unsigned int i)
 {
     unsigned char* byte;
-    unsigned char* xorb1;
-    unsigned char* xorb2;
+    // if you declare here *xorb1 (*)
+    unsigned char xorb1;
+    unsigned char xorb2;
     
     // applying only on the first two rows of TK2 or TK3
     for (unsigned int row = 0; row < 2; row++)
     {
         for (unsigned int col = 0; col < 4; col++)
         {
-            byte = tk[4*row + col]; 
-                     
+            byte = tk + (4*row + col);
+
             if ( i == 2)
             {
-                single_bit(xorb1, byte, 5);
-                single_bit(xorb2, byte, 7);
-                *byte = (*byte << 1) | (*xorb1 ^ *xorb2);
+                // (*) here you cannot call single_bit(xorb1, byte, 5)
+                // as the pointer *xorb1 is uninitialized
+                // the pointer is initialized if you assigned a value to it
+                single_bit(&xorb1, byte, 5);
+                single_bit(&xorb2, byte, 7);
+                *byte = (*byte << 1) | (xorb1 ^ xorb2);
                 
             }
             else if (i == 3)
             {
-                single_bit(xorb1, byte, 0);
-                single_bit(xorb2, byte, 6);
-                *byte = (*byte >> 1) | (*xorb1 ^ *xorb2); 
+                single_bit(&xorb1, byte, 0);
+                single_bit(&xorb2, byte, 6);
+
+                // be careful here!!!
+                // you need to replace x6 XOR x0 to the first bit
+                // of the right-shifted bit string
+                // For example, the original bit string: 1000 0011
+                // x6 XOR x0: 0 XOR 1 = 1
+                // right shift by 1: 0100 0001
+                // what you need to do is:
+                // 0100 0001
+                // OR
+                // 1000 0000
+                // -> 1100 0001
+                // BUT in C the OR (|) operation fills up the value
+                // with leading 0s. For example, 1 -> 0000 0001
+                // the when you do OR, it becomes
+                // 0100 0001
+                // OR
+                // 0000 0001
+                // Maybe I'am wrong :)). Just try to run and get back
+                // here when error raised. Good luck!
+                *byte = (*byte >> 1) | (xorb1 ^ xorb2); 
             }
         }
     }
@@ -149,14 +172,13 @@ void LFSR_TK(unsigned char* tk, unsigned int i)
 
 void addRTkey(unsigned char* initState, unsigned char* tk)
 {
-    printf("tk2");
+    // printf("tk2");
     
     unsigned char* tk1 = tk;
-    unsigned char* tk2 = &tk[16];
+    unsigned char* tk2 = tk + 16;
     
     
-    
-    unsigned char* tk3 = &tk[32];
+    unsigned char* tk3 = tk + 32;
 
     for (unsigned int i = 0; i < 2; i++)
     {
@@ -184,5 +206,5 @@ const unsigned int SHIFTROWS_PERMUTATION[] = {0,1,2,3,7,4,5,6,10,11,8,9,13,14,15
 void shiftRows(unsigned char* initState)
 {
     //printf("%02x", *(initState+2));
-    //permutation(initState, SHIFTROWS_PERMUTATION,16);
+    permutation(initState, SHIFTROWS_PERMUTATION,16);
 }
